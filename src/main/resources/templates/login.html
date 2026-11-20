@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('ログイン')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container narrow">
+    <h1>ログイン</h1>
+
+    <p th:if="${param.error}" class="alert error" role="alert">ユーザー名またはパスワードが正しくありません。</p>
+    <p th:if="${param.logout}" class="flash" role="status">ログアウトしました。</p>
+
+    <form th:action="@{/login}" method="post" class="card">
+        <label for="username">ユーザー名</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+
+        <label for="password">パスワード</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+        <button type="submit" class="button">ログイン</button>
+    </form>
+
+    <p th:if="${demoMode}" class="hint">
+        デモ用の初期設定で起動しています。
+        ユーザー名 <code th:text="${demoUsername}">demo</code> /
+        パスワード <code th:text="${demoPassword}">demo-pass</code> でログインできます。
+    </p>
+</main>
+</body>
+</html>

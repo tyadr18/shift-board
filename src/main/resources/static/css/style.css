@@ -1,0 +1,110 @@
+:root {
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --text: #1f2933;
+    --muted: #5f6b7a;
+    --border: #d9dee5;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --danger: #dc2626;
+    --success-bg: #ecfdf5;
+    --success-text: #065f46;
+    --error-bg: #fef2f2;
+    --error-text: #991b1b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+}
+
+.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+.brand { font-weight: 700; color: var(--text); text-decoration: none; font-size: 1.1rem; }
+.site-nav { display: flex; align-items: center; gap: 12px; }
+.user { color: var(--muted); font-size: 0.9rem; }
+
+.container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+.container.narrow { max-width: 520px; }
+
+.page-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 1.5rem; margin: 0 0 16px; }
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.card label { display: block; font-weight: 600; margin: 12px 0 4px; }
+.card label:first-child { margin-top: 0; }
+
+input[type="text"], input[type="password"], input[type="date"], select, textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font: inherit;
+    background: #fff;
+}
+.invalid { border-color: var(--danger); }
+
+.filter { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; }
+.filter .field label { margin-top: 0; }
+.filter .alert { grid-column: 1 / -1; }
+
+.actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.filter .actions { margin-top: 0; }
+
+.button {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid var(--primary);
+    border-radius: 6px;
+    background: var(--primary);
+    color: #fff;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+.button:hover { background: var(--primary-dark); }
+.button.secondary { background: #fff; color: var(--primary); }
+.button.secondary:hover { background: #eff6ff; }
+.button.danger { background: #fff; color: var(--danger); border-color: var(--danger); }
+.button.danger:hover { background: var(--error-bg); }
+.button.small { padding: 4px 10px; font-size: 0.85rem; }
+
+form.inline { display: inline; margin: 0; }
+
+.table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); }
+.table th, .table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.table th { background: #f0f3f7; font-size: 0.9rem; }
+.table small { display: block; color: var(--muted); }
+.note { white-space: pre-wrap; max-width: 280px; }
+.row-actions { white-space: nowrap; }
+
+.slot { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; }
+.slot-early { background: #fef3c7; color: #92400e; }
+.slot-late { background: #dbeafe; color: #1e40af; }
+.slot-night { background: #ede9fe; color: #5b21b6; }
+.slot-full { background: #dcfce7; color: #166534; }
+
+.flash { background: var(--success-bg); color: var(--success-text); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+.alert.error { background: var(--error-bg); color: var(--error-text); padding: 10px 14px 10px 28px; border-radius: 6px; margin: 0 0 16px; }
+p.alert.error { padding-left: 14px; }
+.field-error { color: var(--danger); font-size: 0.9rem; margin: 4px 0 0; }
+.required { font-size: 0.75rem; color: #fff; background: var(--danger); border-radius: 4px; padding: 0 6px; margin-left: 4px; }
+.count, .hint, .empty { color: var(--muted); }
+code { background: #eef1f5; padding: 1px 6px; border-radius: 4px; }

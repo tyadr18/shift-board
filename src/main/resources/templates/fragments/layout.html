@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' | shift-board'">shift-board</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<header th:fragment="header" class="site-header">
+    <a class="brand" th:href="@{/shifts}">shift-board</a>
+    <nav sec:authorize="isAuthenticated()" class="site-nav">
+        <span class="user">ログイン中: <strong sec:authentication="name">demo</strong></span>
+        <form th:action="@{/logout}" method="post" class="inline">
+            <button type="submit" class="button secondary">ログアウト</button>
+        </form>
+    </nav>
+</header>
+
+<div th:fragment="flash" th:if="${message}" class="flash" role="status" th:text="${message}">メッセージ</div>
+</body>
+</html>

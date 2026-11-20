@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${shiftId == null ? 'シフト希望の登録' : 'シフト希望の編集'})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container narrow">
+    <h1 th:text="${shiftId == null} ? 'シフト希望の登録' : 'シフト希望の編集'">シフト希望の登録</h1>
+
+    <form th:action="${shiftId == null} ? @{/shifts} : @{/shifts/{id}(id=${shiftId})}"
+          th:object="${form}" method="post" class="card" novalidate>
+
+        <label for="staffName">スタッフ名 <span class="required">必須</span></label>
+        <input type="text" th:field="*{staffName}" maxlength="50" th:errorclass="invalid">
+        <p th:if="${#fields.hasErrors('staffName')}" th:errors="*{staffName}" class="field-error">エラー</p>
+
+        <label for="workDate">日付 <span class="required">必須</span></label>
+        <input type="date" th:field="*{workDate}" th:errorclass="invalid">
+        <p th:if="${#fields.hasErrors('workDate')}" th:errors="*{workDate}" class="field-error">エラー</p>
+
+        <label for="timeSlot">時間帯 <span class="required">必須</span></label>
+        <select th:field="*{timeSlot}" th:errorclass="invalid">
+            <option value="">選択してください</option>
+            <option th:each="slot : ${timeSlots}" th:value="${slot}" th:text="${slot.displayName}">早番</option>
+        </select>
+        <p th:if="${#fields.hasErrors('timeSlot')}" th:errors="*{timeSlot}" class="field-error">エラー</p>
+
+        <label for="note">備考（任意・200文字まで）</label>
+        <textarea th:field="*{note}" rows="3" maxlength="200" th:errorclass="invalid"></textarea>
+        <p th:if="${#fields.hasErrors('note')}" th:errors="*{note}" class="field-error">エラー</p>
+
+        <div class="actions">
+            <button type="submit" class="button" th:text="${shiftId == null} ? '登録する' : '更新する'">登録する</button>
+            <a th:href="@{/shifts}" class="button secondary">一覧に戻る</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>
