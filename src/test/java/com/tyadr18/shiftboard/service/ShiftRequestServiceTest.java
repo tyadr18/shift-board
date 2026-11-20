@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -51,204 +50,184 @@ class ShiftRequestServiceTest {
         return new ShiftRequestCommand(staff, date, slot, note);
     }
 
-    @Nested
-    @DisplayName("登録")
-    class Create {
+    @Test
+    @DisplayName("登録: 前後の空白を取り除き、空の備考は null にして保存する")
+    void savesNormalizedValues() {
+        ShiftRequest saved = service.create(command("  スタッフA  ", TODAY.plusDays(1), TimeSlot.EARLY, "   "));
 
-        @Test
-        @DisplayName("前後の空白を取り除き、空の備考は null にして保存する")
-        void savesNormalizedValues() {
-            ShiftRequest saved = service.create(command("  スタッフA  ", TODAY.plusDays(1), TimeSlot.EARLY, "   "));
-
-            ShiftRequest found = repository.findById(saved.getId()).orElseThrow();
-            assertThat(found.getStaffName()).isEqualTo("スタッフA");
-            assertThat(found.getNote()).isNull();
-            assertThat(found.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 12, 1, 9, 0));
-            assertThat(found.getUpdatedAt()).isEqualTo(found.getCreatedAt());
-        }
-
-        @Test
-        @DisplayName("今日の日付は登録できる")
-        void acceptsToday() {
-            ShiftRequest saved = service.create(command("スタッフA", TODAY, TimeSlot.NIGHT, null));
-
-            assertThat(saved.getId()).isNotNull();
-        }
-
-        @Test
-        @DisplayName("過去の日付は workDate のルール違反になる")
-        void rejectsPastDate() {
-            assertThatThrownBy(() -> service.create(command("スタッフA", TODAY.minusDays(1), TimeSlot.EARLY, null)))
-                    .isInstanceOf(ShiftRuleViolationException.class)
-                    .hasMessageContaining("過去の日付")
-                    .extracting("field").isEqualTo("workDate");
-            assertThat(repository.count()).isZero();
-        }
-
-        @Test
-        @DisplayName("同じスタッフ・日付・時間帯の重複は timeSlot のルール違反になる")
-        void rejectsDuplicate() {
-            service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
-
-            assertThatThrownBy(() -> service.create(command(" スタッフA ", TODAY.plusDays(1), TimeSlot.EARLY, "再送")))
-                    .isInstanceOf(ShiftRuleViolationException.class)
-                    .extracting("field").isEqualTo("timeSlot");
-            assertThat(repository.count()).isEqualTo(1);
-        }
-
-        @Test
-        @DisplayName("時間帯が違えば同じ日に複数登録できる")
-        void allowsDifferentSlotsOnSameDay() {
-            service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
-            service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.NIGHT, null));
-
-            assertThat(repository.count()).isEqualTo(2);
-        }
+        ShiftRequest found = repository.findById(saved.getId()).orElseThrow();
+        assertThat(found.getStaffName()).isEqualTo("スタッフA");
+        assertThat(found.getNote()).isNull();
+        assertThat(found.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 12, 1, 9, 0));
+        assertThat(found.getUpdatedAt()).isEqualTo(found.getCreatedAt());
     }
 
-    @Nested
-    @DisplayName("更新")
-    class Update {
+    @Test
+    @DisplayName("登録: 今日の日付は登録できる")
+    void acceptsToday() {
+        ShiftRequest saved = service.create(command("スタッフA", TODAY, TimeSlot.NIGHT, null));
 
-        @Test
-        @DisplayName("内容と更新日時が変わる")
-        void updatesFields() {
-            ShiftRequest saved = service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
-
-            service.update(saved.getId(), command("スタッフA", TODAY.plusDays(2), TimeSlot.LATE, "遅番に変更"));
-            repository.flush();
-
-            ShiftRequest found = repository.findById(saved.getId()).orElseThrow();
-            assertThat(found.getWorkDate()).isEqualTo(TODAY.plusDays(2));
-            assertThat(found.getTimeSlot()).isEqualTo(TimeSlot.LATE);
-            assertThat(found.getNote()).isEqualTo("遅番に変更");
-        }
-
-        @Test
-        @DisplayName("自分自身と同じ内容のまま保存しても重複扱いにしない")
-        void sameValuesIsNotDuplicate() {
-            ShiftRequest saved = service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
-
-            service.update(saved.getId(), command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, "備考だけ追加"));
-
-            assertThat(service.get(saved.getId()).getNote()).isEqualTo("備考だけ追加");
-        }
-
-        @Test
-        @DisplayName("ほかの希望と重なる内容には変更できない")
-        void rejectsDuplicateWithOther() {
-            service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
-            ShiftRequest other = service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.LATE, null));
-
-            assertThatThrownBy(() -> service.update(other.getId(),
-                    command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null)))
-                    .isInstanceOf(ShiftRuleViolationException.class)
-                    .extracting("field").isEqualTo("timeSlot");
-        }
-
-        @Test
-        @DisplayName("存在しない ID は ShiftRequestNotFoundException")
-        void notFound() {
-            assertThatThrownBy(() -> service.update(999L, command("スタッフA", TODAY, TimeSlot.EARLY, null)))
-                    .isInstanceOf(ShiftRequestNotFoundException.class);
-        }
+        assertThat(saved.getId()).isNotNull();
     }
 
-    @Nested
-    @DisplayName("削除")
-    class Delete {
-
-        @Test
-        @DisplayName("削除すると取得できなくなる")
-        void deletes() {
-            ShiftRequest saved = service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
-
-            service.delete(saved.getId());
-
-            assertThat(repository.findById(saved.getId())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("存在しない ID は ShiftRequestNotFoundException")
-        void notFound() {
-            assertThatThrownBy(() -> service.delete(999L))
-                    .isInstanceOf(ShiftRequestNotFoundException.class);
-        }
+    @Test
+    @DisplayName("登録: 過去の日付は workDate のルール違反になる")
+    void rejectsPastDate() {
+        assertThatThrownBy(() -> service.create(command("スタッフA", TODAY.minusDays(1), TimeSlot.EARLY, null)))
+                .isInstanceOf(ShiftRuleViolationException.class)
+                .hasMessageContaining("過去の日付")
+                .extracting("field").isEqualTo("workDate");
+        assertThat(repository.count()).isZero();
     }
 
-    @Nested
-    @DisplayName("一覧・絞り込み")
-    class Search {
+    @Test
+    @DisplayName("登録: 同じスタッフ・日付・時間帯の重複は timeSlot のルール違反になる")
+    void rejectsDuplicate() {
+        service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
 
-        private void seed() {
-            service.create(command("スタッフB", TODAY.plusDays(2), TimeSlot.EARLY, null));
-            service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.NIGHT, null));
-            service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
-            service.create(command("Staff_X", TODAY.plusDays(3), TimeSlot.FULL, null));
-        }
+        assertThatThrownBy(() -> service.create(command(" スタッフA ", TODAY.plusDays(1), TimeSlot.EARLY, "再送")))
+                .isInstanceOf(ShiftRuleViolationException.class)
+                .extracting("field").isEqualTo("timeSlot");
+        assertThat(repository.count()).isEqualTo(1);
+    }
 
-        @Test
-        @DisplayName("条件なしなら全件を 日付→時間帯→スタッフ名 の順で返す")
-        void returnsAllInDisplayOrder() {
-            seed();
+    @Test
+    @DisplayName("登録: 時間帯が違えば同じ日に複数登録できる")
+    void allowsDifferentSlotsOnSameDay() {
+        service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
+        service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.NIGHT, null));
 
-            List<ShiftRequest> result = service.search(ShiftSearchCriteria.none());
+        assertThat(repository.count()).isEqualTo(2);
+    }
 
-            assertThat(result)
-                    .extracting(ShiftRequest::getWorkDate, ShiftRequest::getTimeSlot, ShiftRequest::getStaffName)
-                    .containsExactly(
-                            tuple(TODAY.plusDays(1), TimeSlot.EARLY, "スタッフA"),
-                            tuple(TODAY.plusDays(1), TimeSlot.NIGHT, "スタッフA"),
-                            tuple(TODAY.plusDays(2), TimeSlot.EARLY, "スタッフB"),
-                            tuple(TODAY.plusDays(3), TimeSlot.FULL, "Staff_X"));
-        }
+    @Test
+    @DisplayName("更新: 内容と更新日時が変わる")
+    void updatesFields() {
+        ShiftRequest saved = service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
 
-        @Test
-        @DisplayName("スタッフ名は部分一致・大文字小文字を区別しない")
-        void filtersByStaffName() {
-            seed();
+        service.update(saved.getId(), command("スタッフA", TODAY.plusDays(2), TimeSlot.LATE, "遅番に変更"));
+        repository.flush();
 
-            assertThat(service.search(new ShiftSearchCriteria("フa", null, null)))
-                    .extracting(ShiftRequest::getStaffName)
-                    .containsOnly("スタッフA")
-                    .hasSize(2);
-            assertThat(service.search(new ShiftSearchCriteria("staff", null, null)))
-                    .extracting(ShiftRequest::getStaffName)
-                    .containsExactly("Staff_X");
-        }
+        ShiftRequest found = repository.findById(saved.getId()).orElseThrow();
+        assertThat(found.getWorkDate()).isEqualTo(TODAY.plusDays(2));
+        assertThat(found.getTimeSlot()).isEqualTo(TimeSlot.LATE);
+        assertThat(found.getNote()).isEqualTo("遅番に変更");
+    }
 
-        @Test
-        @DisplayName("% や _ はワイルドカードではなく文字として検索する")
-        void escapesLikeWildcards() {
-            seed();
+    @Test
+    @DisplayName("更新: 自分自身と同じ内容のまま保存しても重複扱いにしない")
+    void sameValuesIsNotDuplicate() {
+        ShiftRequest saved = service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
 
-            assertThat(service.search(new ShiftSearchCriteria("_", null, null)))
-                    .extracting(ShiftRequest::getStaffName)
-                    .containsExactly("Staff_X");
-            assertThat(service.search(new ShiftSearchCriteria("%", null, null))).isEmpty();
-        }
+        service.update(saved.getId(), command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, "備考だけ追加"));
 
-        @Test
-        @DisplayName("期間の開始日・終了日はどちらもその日を含む")
-        void filtersByPeriodInclusive() {
-            seed();
+        assertThat(service.get(saved.getId()).getNote()).isEqualTo("備考だけ追加");
+    }
 
-            assertThat(service.search(new ShiftSearchCriteria(null, TODAY.plusDays(2), TODAY.plusDays(3))))
-                    .extracting(ShiftRequest::getWorkDate)
-                    .containsExactly(TODAY.plusDays(2), TODAY.plusDays(3));
-            assertThat(service.search(new ShiftSearchCriteria(null, null, TODAY.plusDays(1))))
-                    .hasSize(2);
-        }
+    @Test
+    @DisplayName("更新: ほかの希望と重なる内容には変更できない")
+    void rejectsDuplicateWithOther() {
+        service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
+        ShiftRequest other = service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.LATE, null));
 
-        @Test
-        @DisplayName("スタッフ名と期間を組み合わせられる。空白だけのスタッフ名は条件にしない")
-        void combinesConditions() {
-            seed();
+        assertThatThrownBy(() -> service.update(other.getId(),
+                command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null)))
+                .isInstanceOf(ShiftRuleViolationException.class)
+                .extracting("field").isEqualTo("timeSlot");
+    }
 
-            assertThat(service.search(new ShiftSearchCriteria("スタッフ", TODAY.plusDays(2), null)))
-                    .extracting(ShiftRequest::getStaffName)
-                    .containsExactly("スタッフB");
-            assertThat(service.search(new ShiftSearchCriteria("   ", null, null))).hasSize(4);
-        }
+    @Test
+    @DisplayName("更新: 存在しない ID は ShiftRequestNotFoundException")
+    void updateNotFound() {
+        assertThatThrownBy(() -> service.update(999L, command("スタッフA", TODAY, TimeSlot.EARLY, null)))
+                .isInstanceOf(ShiftRequestNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("削除: 削除すると取得できなくなる")
+    void deletes() {
+        ShiftRequest saved = service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
+
+        service.delete(saved.getId());
+
+        assertThat(repository.findById(saved.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("削除: 存在しない ID は ShiftRequestNotFoundException")
+    void deleteNotFound() {
+        assertThatThrownBy(() -> service.delete(999L))
+                .isInstanceOf(ShiftRequestNotFoundException.class);
+    }
+
+    private void seed() {
+        service.create(command("スタッフB", TODAY.plusDays(2), TimeSlot.EARLY, null));
+        service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.NIGHT, null));
+        service.create(command("スタッフA", TODAY.plusDays(1), TimeSlot.EARLY, null));
+        service.create(command("Staff_X", TODAY.plusDays(3), TimeSlot.FULL, null));
+    }
+
+    @Test
+    @DisplayName("一覧・絞り込み: 条件なしなら全件を 日付→時間帯→スタッフ名 の順で返す")
+    void returnsAllInDisplayOrder() {
+        seed();
+
+        List<ShiftRequest> result = service.search(ShiftSearchCriteria.none());
+
+        assertThat(result)
+                .extracting(ShiftRequest::getWorkDate, ShiftRequest::getTimeSlot, ShiftRequest::getStaffName)
+                .containsExactly(
+                        tuple(TODAY.plusDays(1), TimeSlot.EARLY, "スタッフA"),
+                        tuple(TODAY.plusDays(1), TimeSlot.NIGHT, "スタッフA"),
+                        tuple(TODAY.plusDays(2), TimeSlot.EARLY, "スタッフB"),
+                        tuple(TODAY.plusDays(3), TimeSlot.FULL, "Staff_X"));
+    }
+
+    @Test
+    @DisplayName("一覧・絞り込み: スタッフ名は部分一致・大文字小文字を区別しない")
+    void filtersByStaffName() {
+        seed();
+
+        assertThat(service.search(new ShiftSearchCriteria("フa", null, null)))
+                .extracting(ShiftRequest::getStaffName)
+                .containsOnly("スタッフA")
+                .hasSize(2);
+        assertThat(service.search(new ShiftSearchCriteria("staff", null, null)))
+                .extracting(ShiftRequest::getStaffName)
+                .containsExactly("Staff_X");
+    }
+
+    @Test
+    @DisplayName("一覧・絞り込み: % や _ はワイルドカードではなく文字として検索する")
+    void escapesLikeWildcards() {
+        seed();
+
+        assertThat(service.search(new ShiftSearchCriteria("_", null, null)))
+                .extracting(ShiftRequest::getStaffName)
+                .containsExactly("Staff_X");
+        assertThat(service.search(new ShiftSearchCriteria("%", null, null))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("一覧・絞り込み: 期間の開始日・終了日はどちらもその日を含む")
+    void filtersByPeriodInclusive() {
+        seed();
+
+        assertThat(service.search(new ShiftSearchCriteria(null, TODAY.plusDays(2), TODAY.plusDays(3))))
+                .extracting(ShiftRequest::getWorkDate)
+                .containsExactly(TODAY.plusDays(2), TODAY.plusDays(3));
+        assertThat(service.search(new ShiftSearchCriteria(null, null, TODAY.plusDays(1))))
+                .hasSize(2);
+    }
+
+    @Test
+    @DisplayName("一覧・絞り込み: スタッフ名と期間を組み合わせられる。空白だけのスタッフ名は条件にしない")
+    void combinesConditions() {
+        seed();
+
+        assertThat(service.search(new ShiftSearchCriteria("スタッフ", TODAY.plusDays(2), null)))
+                .extracting(ShiftRequest::getStaffName)
+                .containsExactly("スタッフB");
+        assertThat(service.search(new ShiftSearchCriteria("   ", null, null))).hasSize(4);
     }
 }
